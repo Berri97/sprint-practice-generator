@@ -181,6 +181,16 @@ def generate_case(gender='men', n=24, seed=1, target='500_2', level='senior', ti
             b['times'][race] = a['times'][race]
         b['times']['500_1'] += 10
         b['times']['1000_1'] -= 20
+        # A draw tie only changes the pairing if both skaters belong to the
+        # same lane group. Swap with a third skater to keep day-one lanes
+        # balanced, including for odd fields.
+        first_race = target.replace('_2', '_1')
+        if b['lanes'][first_race] != a['lanes'][first_race]:
+            other = next(s for s in skaters
+                         if s is not a and s is not b
+                         and s['lanes'][first_race] == a['lanes'][first_race])
+            b['lanes'][first_race], other['lanes'][first_race] = (
+                other['lanes'][first_race], b['lanes'][first_race])
     # Extremely rare complete ties are regenerated deterministically, never bib-sorted.
     for attempt in range(100):
         try:
@@ -326,7 +336,8 @@ def streamlit_app():
         target = st.selectbox('Create start list for', ['500_2', '1000_2'], format_func=LABELS.get)
         n = st.number_input('Number of skaters', 4, 40, 24)
         level = st.selectbox('Performance level', ['senior', 'junior'])
-        tie = st.checkbox('Include equal total points')
+        tie = st.checkbox('Include equal total points',
+                          help='The tied skaters started in the same lane in the first race of the distance concerned, so the tie-break affects their pairs.')
         seed_text = st.text_input('Case number (blank = random)')
         if st.button('Generate practice case', type='primary'):
             try:
